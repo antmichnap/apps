@@ -1,24 +1,23 @@
 import SwiftUI
 
-/// Visual step sequencer grid with transport controls
+/// Visual step sequencer grid with transport controls and note input
 struct SequencerView: View {
     @ObservedObject var sequencer: PatternSequencer
-    @State private var selectedRow: AudioEngine.DrumSound = .kick
+    @State private var selectedTrack: PatternSequencer.TrackType = .kick
+    @State private var editingNoteIndex: Int? = nil
 
-    private let drumRows: [AudioEngine.DrumSound] = [.kick, .snare, .hihat, .clap]
+    private let noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
     var body: some View {
         VStack(spacing: 12) {
-            // Transport bar
             transportBar
-
-            // Drum row selector
-            drumSelector
-
-            // Step grid
+            trackSelector
             stepGrid
 
-            // BPM control
+            if selectedTrack == .synth {
+                noteEditor
+            }
+
             bpmControl
         }
     }
@@ -36,14 +35,13 @@ struct SequencerView: View {
                     .frame(width: 44, height: 36)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(sequencer.isPlaying ? Color(hex: "FF6B6B") : Color(hex: "4ECDC4"))
+                            .fill(sequencer.isPlaying ? Color(white: 0.45) : Color(white: 0.3))
                     )
             }
             .buttonStyle(.plain)
 
             Spacer()
 
-            // Preset menu
             Menu {
                 ForEach(PatternSequencer.Preset.allCases) { preset in
                     Button(preset.rawValue) {
@@ -61,7 +59,7 @@ struct SequencerView: View {
                 .padding(.vertical, 8)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.white.opacity(0.15))
+                        .fill(Color.white.opacity(0.12))
                 )
             }
 
@@ -78,32 +76,37 @@ struct SequencerView: View {
                 .padding(.vertical, 8)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.white.opacity(0.15))
+                        .fill(Color.white.opacity(0.12))
                 )
             }
             .buttonStyle(.plain)
         }
     }
 
-    // MARK: - Drum Selector
+    // MARK: - Track Selector
 
-    private var drumSelector: some View {
-        HStack(spacing: 6) {
-            ForEach(drumRows) { drum in
-                Button {
-                    selectedRow = drum
-                } label: {
-                    Text(drum.rawValue)
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundColor(selectedRow == drum ? .white : .white.opacity(0.6))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(selectedRow == drum ? drumColor(drum) : Color.white.opacity(0.08))
-                        )
+    private var trackSelector: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 5) {
+                ForEach(PatternSequencer.TrackType.allCases) { track in
+                    Button {
+                        selectedTrack = track
+                        editingNoteIndex = nil
+                    } label: {
+                        Text(track.rawValue)
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundColor(selectedTrack == track ? .white : .white.opacity(0.5))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(selectedTrack == track
+                                          ? trackColor(track)
+                                          : Color.white.opacity(0.06))
+                            )
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
     }
@@ -113,19 +116,140 @@ struct SequencerView: View {
     private var stepGrid: some View {
         HStack(spacing: 3) {
             ForEach(0..<16, id: \.self) { index in
-                let isActive = stepIsActive(at: index)
+                let isActive = sequencer.stepIsActive(track: selectedTrack, at: index)
                 let isCurrent = sequencer.currentStep == index
 
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(stepColor(active: isActive, current: isCurrent, index: index))
-                    .frame(height: 32)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(isCurrent ? Color.white.opacity(0.8) : Color.clear, lineWidth: 1.5)
-                    )
-                    .onTapGesture {
-                        sequencer.toggleDrum(selectedRow, at: index)
+                VStack(spacing: 2) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(stepColor(active: isActive, current: isCurrent, index: index))
+                        .frame(height: 32)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(isCurrent ? Color.white.opacity(0.7) : Color.clear, lineWidth: 1.5)
+                        )
+                        .overlay(
+                            // Show note name on synth track
+                            Group {
+                                if selectedTrack == .synth, let note = sequencer.steps[index].note {
+                                    Text(midiNoteName(note))
+                                        .font(.system(size: 7, weight: .bold, design: .monospaced))
+                                        .foregroundColor(.white.opacity(0.9))
+                                }
+                            }
+                        )
+                        .onTapGesture {
+                            if selectedTrack == .synth && isActive {
+                                // Tap active synth step to edit the note
+                                editingNoteIndex = (editingNoteIndex == index) ? nil : index
+                            } else {
+                                sequencer.toggleTrack(selectedTrack, at: index)
+                            }
+                        }
+
+                    // Highlight indicator for edited step
+                    if editingNoteIndex == index {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.6))
+                            .frame(height: 2)
+                            .cornerRadius(1)
                     }
+                }
+            }
+        }
+    }
+
+    // MARK: - Note Editor
+
+    private var noteEditor: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "pianokeys")
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.5))
+                Text(editingNoteIndex != nil ? "Set note for step \(editingNoteIndex! + 1)" : "Tap an active synth step to edit its note")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundColor(.white.opacity(0.6))
+                Spacer()
+            }
+
+            if editingNoteIndex != nil {
+                // Octave and note picker
+                VStack(spacing: 6) {
+                    // Note buttons
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 6), spacing: 4) {
+                        ForEach(0..<12, id: \.self) { noteIdx in
+                            let currentNote = sequencer.steps[editingNoteIndex!].note ?? 60
+                            let octave = currentNote / 12
+                            let candidateNote = octave * 12 + noteIdx
+                            let isSelected = (currentNote % 12) == noteIdx
+
+                            Button {
+                                sequencer.setNote(at: editingNoteIndex!, note: candidateNote)
+                            } label: {
+                                Text(noteNames[noteIdx])
+                                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                                    .foregroundColor(isSelected ? .white : .white.opacity(0.6))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .fill(isSelected ? Color(white: 0.4) : Color(white: 0.15))
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    // Octave selector
+                    HStack(spacing: 6) {
+                        Text("Oct")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundColor(.white.opacity(0.5))
+                        ForEach(2..<7, id: \.self) { oct in
+                            let currentNote = sequencer.steps[editingNoteIndex!].note ?? 60
+                            let currentOctave = currentNote / 12
+                            let isSelected = currentOctave == oct
+
+                            Button {
+                                let notePart = currentNote % 12
+                                sequencer.setNote(at: editingNoteIndex!, note: oct * 12 + notePart)
+                            } label: {
+                                Text("\(oct - 1)")
+                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                    .foregroundColor(isSelected ? .white : .white.opacity(0.5))
+                                    .frame(width: 32, height: 26)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .fill(isSelected ? Color(white: 0.4) : Color(white: 0.12))
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        Spacer()
+
+                        // Delete note button
+                        Button {
+                            sequencer.setNote(at: editingNoteIndex!, note: nil)
+                            editingNoteIndex = nil
+                        } label: {
+                            Image(systemName: "trash")
+                                .font(.system(size: 12))
+                                .foregroundColor(.white.opacity(0.6))
+                                .frame(width: 32, height: 26)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(Color(white: 0.2))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(white: 0.1))
+                )
             }
         }
     }
@@ -136,10 +260,10 @@ struct SequencerView: View {
         HStack(spacing: 8) {
             Text("BPM")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundColor(.white.opacity(0.6))
+                .foregroundColor(.white.opacity(0.5))
 
             Slider(value: $sequencer.bpm, in: 60...200, step: 1)
-                .tint(Color(hex: "9B4DCA"))
+                .tint(Color(white: 0.5))
 
             Text("\(Int(sequencer.bpm))")
                 .font(.system(size: 13, weight: .bold, design: .monospaced))
@@ -150,37 +274,37 @@ struct SequencerView: View {
 
     // MARK: - Helpers
 
-    private func stepIsActive(at index: Int) -> Bool {
-        let step = sequencer.steps[index]
-        switch selectedRow {
-        case .kick:  return step.kick
-        case .snare: return step.snare
-        case .hihat: return step.hihat
-        case .clap:  return step.clap
+    private func midiNoteName(_ note: Int) -> String {
+        let name = noteNames[note % 12]
+        let octave = (note / 12) - 1
+        return "\(name)\(octave)"
+    }
+
+    private func trackColor(_ track: PatternSequencer.TrackType) -> Color {
+        switch track {
+        case .kick:    return Color(white: 0.35)
+        case .snare:   return Color(white: 0.38)
+        case .hihat:   return Color(white: 0.32)
+        case .openHat: return Color(white: 0.36)
+        case .clap:    return Color(white: 0.34)
+        case .tomHi:   return Color(white: 0.33)
+        case .tomLo:   return Color(white: 0.30)
+        case .shaker:  return Color(white: 0.37)
+        case .synth:   return Color(white: 0.42)
         }
     }
 
     private func stepColor(active: Bool, current: Bool, index: Int) -> Color {
         if active && current {
-            return drumColor(selectedRow)
+            return Color(white: 0.55)
         } else if active {
-            return drumColor(selectedRow).opacity(0.65)
+            return Color(white: 0.40)
         } else if current {
-            return Color.white.opacity(0.2)
+            return Color.white.opacity(0.15)
         } else {
-            // Subtle grouping every 4 steps
             return index % 4 < 2
-                ? Color.white.opacity(0.08)
-                : Color.white.opacity(0.05)
-        }
-    }
-
-    private func drumColor(_ drum: AudioEngine.DrumSound) -> Color {
-        switch drum {
-        case .kick:  return Color(hex: "FF6B6B")
-        case .snare: return Color(hex: "4ECDC4")
-        case .hihat: return Color(hex: "FFE66D")
-        case .clap:  return Color(hex: "A8E6CF")
+                ? Color.white.opacity(0.06)
+                : Color.white.opacity(0.04)
         }
     }
 }

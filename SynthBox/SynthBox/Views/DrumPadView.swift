@@ -5,12 +5,14 @@ struct DrumPadView: View {
     let onDrumTap: (AudioEngine.DrumSound) -> Void
 
     private let columns = [
-        GridItem(.flexible(), spacing: 10),
-        GridItem(.flexible(), spacing: 10)
+        GridItem(.flexible(), spacing: 8),
+        GridItem(.flexible(), spacing: 8),
+        GridItem(.flexible(), spacing: 8),
+        GridItem(.flexible(), spacing: 8)
     ]
 
     var body: some View {
-        LazyVGrid(columns: columns, spacing: 10) {
+        LazyVGrid(columns: columns, spacing: 8) {
             ForEach(AudioEngine.DrumSound.allCases) { drum in
                 DrumPadButton(drum: drum, onTap: onDrumTap)
             }
@@ -24,21 +26,29 @@ private struct DrumPadButton: View {
 
     @State private var isPressed = false
 
-    private var padColor: Color {
+    private var padGray: Color {
         switch drum {
-        case .kick:  return Color(hex: "FF6B6B")
-        case .snare: return Color(hex: "4ECDC4")
-        case .hihat: return Color(hex: "FFE66D")
-        case .clap:  return Color(hex: "A8E6CF")
+        case .kick:    return Color(white: 0.18)
+        case .snare:   return Color(white: 0.22)
+        case .hihat:   return Color(white: 0.16)
+        case .openHat: return Color(white: 0.20)
+        case .clap:    return Color(white: 0.24)
+        case .tomHi:   return Color(white: 0.19)
+        case .tomLo:   return Color(white: 0.15)
+        case .shaker:  return Color(white: 0.21)
         }
     }
 
     private var padIcon: String {
         switch drum {
-        case .kick:  return "speaker.wave.3.fill"
-        case .snare: return "waveform"
-        case .hihat: return "circle.dotted"
-        case .clap:  return "hands.clap.fill"
+        case .kick:    return "speaker.wave.3.fill"
+        case .snare:   return "waveform"
+        case .hihat:   return "circle.dotted"
+        case .openHat: return "circle.circle"
+        case .clap:    return "hands.clap.fill"
+        case .tomHi:   return "circle.fill"
+        case .tomLo:   return "circle.bottomhalf.filled"
+        case .shaker:  return "wind"
         }
     }
 
@@ -50,20 +60,24 @@ private struct DrumPadButton: View {
                 isPressed = false
             }
         } label: {
-            VStack(spacing: 6) {
+            VStack(spacing: 4) {
                 Image(systemName: padIcon)
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                 Text(drum.rawValue)
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .font(.system(size: 9, weight: .bold, design: .rounded))
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 70)
+            .frame(height: 58)
             .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(padColor.opacity(isPressed ? 1.0 : 0.75))
-                    .shadow(color: padColor.opacity(0.4), radius: isPressed ? 2 : 6, y: isPressed ? 1 : 3)
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isPressed ? Color(white: 0.35) : padGray)
+                    .shadow(color: .black.opacity(0.4), radius: isPressed ? 1 : 4, y: isPressed ? 0 : 2)
             )
-            .foregroundColor(.white)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.white.opacity(isPressed ? 0.3 : 0.08), lineWidth: 1)
+            )
+            .foregroundColor(.white.opacity(0.85))
             .scaleEffect(isPressed ? 0.95 : 1.0)
             .animation(.easeOut(duration: 0.1), value: isPressed)
         }

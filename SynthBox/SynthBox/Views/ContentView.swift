@@ -14,25 +14,22 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            // Background gradient
+            // Background gradient: light gray to dark gray
             LinearGradient(
-                colors: [Color(hex: "1A1A2E"), Color(hex: "16213E"), Color(hex: "0F3460")],
+                colors: [Color(white: 0.28), Color(white: 0.15), Color(white: 0.08)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header
                 header
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
 
-                // Tab selector
                 tabSelector
                     .padding(.top, 12)
 
-                // Content
                 ScrollView {
                     VStack(spacing: 20) {
                         if selectedTab == .play {
@@ -49,7 +46,7 @@ struct ContentView: View {
                 // Keyboard always visible at bottom
                 VStack(spacing: 8) {
                     Divider()
-                        .background(Color.white.opacity(0.1))
+                        .background(Color.white.opacity(0.08))
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         KeyboardView(
@@ -78,12 +75,12 @@ struct ContentView: View {
                     .foregroundColor(.white)
                 Text("music maker")
                     .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundColor(Color(hex: "9B4DCA"))
+                    .foregroundColor(Color(white: 0.55))
             }
 
             Spacer()
 
-            // Waveform toggle
+            // Waveform selector
             Menu {
                 ForEach(AudioEngine.Waveform.allCases) { waveform in
                     Button {
@@ -99,7 +96,7 @@ struct ContentView: View {
                 }
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: audioEngine.waveform == .sine ? "waveform" : "chart.xyaxis.line")
+                    Image(systemName: waveformIcon)
                     Text(audioEngine.waveform.rawValue)
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                 }
@@ -108,13 +105,23 @@ struct ContentView: View {
                 .padding(.vertical, 8)
                 .background(
                     RoundedRectangle(cornerRadius: 10)
-                        .fill(Color(hex: "9B4DCA").opacity(0.4))
+                        .fill(Color(white: 0.3))
                         .overlay(
                             RoundedRectangle(cornerRadius: 10)
-                                .stroke(Color(hex: "9B4DCA").opacity(0.6), lineWidth: 1)
+                                .stroke(Color.white.opacity(0.15), lineWidth: 1)
                         )
                 )
             }
+        }
+    }
+
+    private var waveformIcon: String {
+        switch audioEngine.waveform {
+        case .sine:      return "waveform"
+        case .triangle:  return "triangle"
+        case .saw:       return "chart.xyaxis.line"
+        case .square:    return "square.fill"
+        case .wavetable: return "waveform.circle"
         }
     }
 
@@ -130,19 +137,19 @@ struct ContentView: View {
                 } label: {
                     Text(tab.rawValue)
                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundColor(selectedTab == tab ? .white : .white.opacity(0.5))
+                        .foregroundColor(selectedTab == tab ? .white : .white.opacity(0.4))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
                         .background(
                             selectedTab == tab
-                                ? Color(hex: "9B4DCA").opacity(0.3)
+                                ? Color(white: 0.3)
                                 : Color.clear
                         )
                 }
                 .buttonStyle(.plain)
             }
         }
-        .background(Color.white.opacity(0.05))
+        .background(Color.white.opacity(0.04))
         .cornerRadius(10)
         .padding(.horizontal, 16)
     }
@@ -158,8 +165,20 @@ struct ContentView: View {
             }
 
             // Synth controls
-            sectionHeader("Synth Controls", icon: "slider.horizontal.3")
+            sectionHeader("Synth", icon: "slider.horizontal.3")
             synthControls
+
+            // Filter controls
+            sectionHeader("Filter", icon: "line.3.horizontal.decrease")
+            filterControls
+
+            // Reverb controls
+            sectionHeader("Reverb", icon: "dot.radiowaves.right")
+            reverbControls
+
+            // Delay controls
+            sectionHeader("Delay", icon: "repeat")
+            delayControls
         }
     }
 
@@ -175,31 +194,73 @@ struct ContentView: View {
     // MARK: - Synth Controls
 
     private var synthControls: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
             controlSlider(label: "Volume", value: $audioEngine.volume, range: 0...1)
             controlSlider(label: "Attack", value: $audioEngine.attack, range: 0.001...0.5)
             controlSlider(label: "Release", value: $audioEngine.release, range: 0.05...2.0)
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(Color.white.opacity(0.06))
-        )
+        .padding(14)
+        .background(controlCard)
+    }
+
+    // MARK: - Filter Controls
+
+    private var filterControls: some View {
+        VStack(spacing: 12) {
+            controlSlider(label: "Cutoff", value: $audioEngine.filterCutoff, range: 0...1)
+            controlSlider(label: "Reso", value: $audioEngine.filterResonance, range: 0...1)
+        }
+        .padding(14)
+        .background(controlCard)
+    }
+
+    // MARK: - Reverb Controls
+
+    private var reverbControls: some View {
+        VStack(spacing: 12) {
+            controlSlider(label: "Mix", value: $audioEngine.reverbMix, range: 0...1)
+            controlSlider(label: "Decay", value: $audioEngine.reverbDecay, range: 0...1)
+        }
+        .padding(14)
+        .background(controlCard)
+    }
+
+    // MARK: - Delay Controls
+
+    private var delayControls: some View {
+        VStack(spacing: 12) {
+            controlSlider(label: "Mix", value: $audioEngine.delayMix, range: 0...1)
+            controlSlider(label: "Time", value: $audioEngine.delayTime, range: 0.05...1.0)
+            controlSlider(label: "Feedback", value: $audioEngine.delayFeedback, range: 0...0.9)
+        }
+        .padding(14)
+        .background(controlCard)
+    }
+
+    // MARK: - Shared UI
+
+    private var controlCard: some View {
+        RoundedRectangle(cornerRadius: 12)
+            .fill(Color.white.opacity(0.05))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
+            )
     }
 
     private func controlSlider(label: String, value: Binding<Float>, range: ClosedRange<Float>) -> some View {
         HStack(spacing: 10) {
             Text(label)
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundColor(.white.opacity(0.7))
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundColor(.white.opacity(0.6))
                 .frame(width: 56, alignment: .leading)
 
             Slider(value: value, in: range)
-                .tint(Color(hex: "9B4DCA"))
+                .tint(Color(white: 0.5))
 
             Text(String(format: "%.2f", value.wrappedValue))
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundColor(.white.opacity(0.5))
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .foregroundColor(.white.opacity(0.4))
                 .frame(width: 36)
         }
     }
@@ -207,11 +268,11 @@ struct ContentView: View {
     private func sectionHeader(_ title: String, icon: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 14))
-                .foregroundColor(Color(hex: "9B4DCA"))
+                .font(.system(size: 13))
+                .foregroundColor(Color(white: 0.55))
             Text(title)
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(.white.opacity(0.85))
             Spacer()
         }
     }

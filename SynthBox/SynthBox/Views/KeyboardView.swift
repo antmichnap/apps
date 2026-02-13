@@ -95,16 +95,16 @@ private struct WhiteKey: View {
             RoundedRectangle(cornerRadius: 4)
                 .fill(
                     isPressed
-                        ? LinearGradient(colors: [Color(hex: "E8D5F5"), Color(hex: "D4B8E8")],
+                        ? LinearGradient(colors: [Color(white: 0.75), Color(white: 0.65)],
                                          startPoint: .top, endPoint: .bottom)
-                        : LinearGradient(colors: [.white, Color(white: 0.95)],
+                        : LinearGradient(colors: [Color(white: 0.92), Color(white: 0.85)],
                                          startPoint: .top, endPoint: .bottom)
                 )
-                .shadow(color: .black.opacity(0.15), radius: 1, y: 1)
+                .shadow(color: .black.opacity(0.2), radius: 1, y: 1)
 
             Text(note)
                 .font(.system(size: 9, weight: .medium, design: .rounded))
-                .foregroundColor(isPressed ? Color(hex: "7B2D8E") : .gray)
+                .foregroundColor(isPressed ? Color(white: 0.3) : Color(white: 0.5))
                 .padding(.bottom, 6)
         }
     }
@@ -117,7 +117,7 @@ private struct BlackKey: View {
         RoundedRectangle(cornerRadius: 3)
             .fill(
                 isPressed
-                    ? LinearGradient(colors: [Color(hex: "9B4DCA"), Color(hex: "7B2D8E")],
+                    ? LinearGradient(colors: [Color(white: 0.35), Color(white: 0.28)],
                                      startPoint: .top, endPoint: .bottom)
                     : LinearGradient(colors: [Color(white: 0.2), Color(white: 0.1)],
                                      startPoint: .top, endPoint: .bottom)
