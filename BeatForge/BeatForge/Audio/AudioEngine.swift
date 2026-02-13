@@ -1,6 +1,7 @@
 import AVFoundation
 import Foundation
 import UIKit
+import os
 
 /// Core audio engine handling synthesis and drum playback
 final class AudioEngine: ObservableObject {
@@ -28,6 +29,21 @@ final class AudioEngine: ObservableObject {
         case shaker = "Shaker"
 
         var id: String { rawValue }
+
+        var index: Int {
+            switch self {
+            case .kick:    return 0
+            case .snare:   return 1
+            case .hihat:   return 2
+            case .openHat: return 3
+            case .clap:    return 4
+            case .tomHi:   return 5
+            case .tomLo:   return 6
+            case .shaker:  return 7
+            }
+        }
+
+        static let count = 8
     }
 
     // MARK: - Published State
@@ -38,17 +54,17 @@ final class AudioEngine: ObservableObject {
     @Published var release: Float = 0.3
 
     // Filter
-    @Published var filterCutoff: Float = 1.0   // 0..1, mapped to freq
-    @Published var filterResonance: Float = 0.0 // 0..1
+    @Published var filterCutoff: Float = 1.0
+    @Published var filterResonance: Float = 0.0
 
     // Reverb
-    @Published var reverbMix: Float = 0.2       // 0..1
-    @Published var reverbDecay: Float = 0.5     // 0..1
+    @Published var reverbMix: Float = 0.2
+    @Published var reverbDecay: Float = 0.5
 
     // Delay
-    @Published var delayMix: Float = 0.0        // 0..1
-    @Published var delayTime: Float = 0.3       // seconds 0.05..1.0
-    @Published var delayFeedback: Float = 0.4   // 0..0.9
+    @Published var delayMix: Float = 0.0
+    @Published var delayTime: Float = 0.3
+    @Published var delayFeedback: Float = 0.4
 
     // MARK: - Audio Properties
 
@@ -56,27 +72,33 @@ final class AudioEngine: ObservableObject {
     private var sourceNode: AVAudioSourceNode?
 
     private var sampleRate: Double = 48000.0
-    private var activeNotes: [Int: NoteState] = [:]
-    private let noteLock = NSLock()
 
-    private struct NoteState {
+    // Lock-free state shared with audio thread via os_unfair_lock
+    private var lock = os_unfair_lock()
+
+    // Synth notes — fixed-size array avoids dictionary overhead on audio thread
+    private static let maxNotes = 16
+    private var noteSlots = [NoteSlot](repeating: NoteSlot(), count: AudioEngine.maxNotes)
+
+    private struct NoteSlot {
+        var active: Bool = false
+        var midiNote: Int = 0
         var phase: Double = 0.0
         var envelope: Double = 0.0
         var releasing: Bool = false
         var releaseStart: Double = 0.0
     }
 
-    // MARK: - Drum Properties
+    // Drum state — fixed-size array indexed by DrumSound.index
+    private var drumSlots = [DrumSlot](repeating: DrumSlot(), count: DrumSound.count)
 
-    private var drumPhases: [DrumSound: DrumState] = [:]
-
-    private struct DrumState {
+    private struct DrumSlot {
         var phase: Double = 0.0
         var time: Double = 0.0
         var active: Bool = false
     }
 
-    // MARK: - Filter State (simple one-pole low-pass)
+    // MARK: - Filter State
 
     private var filterLP: Double = 0.0
     private var filterBP: Double = 0.0
@@ -128,7 +150,6 @@ final class AudioEngine: ObservableObject {
             try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try session.setPreferredIOBufferDuration(0.005)
             try session.setActive(true)
-            // Use the device's actual sample rate
             sampleRate = session.sampleRate
             if sampleRate <= 0 { sampleRate = 48000.0 }
         } catch {
@@ -198,11 +219,9 @@ final class AudioEngine: ObservableObject {
         let sr = sampleRate
         let format = AVAudioFormat(standardFormatWithSampleRate: sr, channels: 2)!
 
-        // Initialize delay buffer (max 1 second)
         delayBuffer = [Float](repeating: 0.0, count: Int(sr))
         delayWriteIndex = 0
 
-        // Initialize reverb buffers
         reverbBuffers = reverbLengths.map { [Float](repeating: 0.0, count: $0) }
         reverbIndices = [Int](repeating: 0, count: reverbLengths.count)
 
@@ -212,75 +231,172 @@ final class AudioEngine: ObservableObject {
             let bufferList = UnsafeMutableAudioBufferListPointer(audioBufferList)
             let frames = Int(frameCount)
 
+            // Snapshot parameters once per buffer (no lock needed, atomic reads)
+            let curWaveform = self.waveform
+            let curVolume = self.volume
+            let curAttack = Double(self.attack)
+            let curRelease = Double(self.release)
+            let curFilterCutoff = self.filterCutoff
+            let curFilterResonance = self.filterResonance
+            let curReverbMix = self.reverbMix
+            let curReverbDecay = self.reverbDecay
+            let curDelayMix = self.delayMix
+            let curDelayTime = self.delayTime
+            let curDelayFeedback = self.delayFeedback
+
+            // Lock once, copy state, unlock
+            os_unfair_lock_lock(&self.lock)
+            var notes = self.noteSlots
+            var drums = self.drumSlots
+            os_unfair_lock_unlock(&self.lock)
+
+            // Process all frames without holding the lock
             for frame in 0..<frames {
                 var sample: Float = 0.0
 
                 // Synth voices
-                self.noteLock.lock()
-                var finishedNotes: [Int] = []
+                for i in 0..<AudioEngine.maxNotes {
+                    guard notes[i].active else { continue }
 
-                for (note, var state) in self.activeNotes {
-                    let frequency = self.midiNoteToFrequency(note)
+                    let frequency = 440.0 * pow(2.0, Double(notes[i].midiNote - 69) / 12.0)
                     let phaseIncrement = frequency / sr
 
-                    // Generate waveform
                     var wave: Double
-                    switch self.waveform {
+                    switch curWaveform {
                     case .sine:
-                        wave = sin(state.phase * 2.0 * .pi)
+                        wave = sin(notes[i].phase * 2.0 * .pi)
                     case .triangle:
-                        wave = 2.0 * abs(2.0 * (state.phase - floor(state.phase + 0.5))) - 1.0
+                        wave = 2.0 * abs(2.0 * (notes[i].phase - floor(notes[i].phase + 0.5))) - 1.0
                     case .saw:
-                        wave = 2.0 * (state.phase - floor(state.phase + 0.5))
+                        wave = 2.0 * (notes[i].phase - floor(notes[i].phase + 0.5))
                     case .square:
-                        wave = state.phase < 0.5 ? 1.0 : -1.0
+                        wave = notes[i].phase < 0.5 ? 1.0 : -1.0
                     case .wavetable:
-                        let pos = state.phase * Double(self.wavetableSize)
+                        let pos = notes[i].phase * Double(self.wavetableSize)
                         let idx = Int(pos) % self.wavetableSize
                         let frac = pos - floor(pos)
                         let next = (idx + 1) % self.wavetableSize
                         wave = self.wavetable[idx] * (1.0 - frac) + self.wavetable[next] * frac
                     }
 
-                    // Envelope
-                    if state.releasing {
-                        let releaseTime = Double(self.release)
-                        state.releaseStart += 1.0 / sr
-                        let releaseProgress = state.releaseStart / releaseTime
-                        state.envelope = max(0, 1.0 - releaseProgress)
-                        if state.envelope <= 0 {
-                            finishedNotes.append(note)
+                    if notes[i].releasing {
+                        notes[i].releaseStart += 1.0 / sr
+                        let progress = notes[i].releaseStart / curRelease
+                        notes[i].envelope = max(0, 1.0 - progress)
+                        if notes[i].envelope <= 0 {
+                            notes[i].active = false
                         }
                     } else {
-                        let attackTime = Double(self.attack)
-                        state.envelope = min(1.0, state.envelope + 1.0 / (sr * attackTime))
+                        notes[i].envelope = min(1.0, notes[i].envelope + 1.0 / (sr * curAttack))
                     }
 
-                    sample += Float(wave * state.envelope) * self.volume * 0.3
+                    sample += Float(wave * notes[i].envelope) * curVolume * 0.3
 
-                    state.phase += phaseIncrement
-                    if state.phase >= 1.0 { state.phase -= 1.0 }
-                    self.activeNotes[note] = state
+                    notes[i].phase += phaseIncrement
+                    if notes[i].phase >= 1.0 { notes[i].phase -= 1.0 }
                 }
 
-                for note in finishedNotes {
-                    self.activeNotes.removeValue(forKey: note)
+                // Filter
+                let cutoffHz = 80.0 * pow(225.0, Double(curFilterCutoff))
+                let f = 2.0 * sin(.pi * cutoffHz / sr)
+                let q = 1.0 - Double(curFilterResonance) * 0.95
+                let hp = Double(sample) - self.filterLP - q * self.filterBP
+                self.filterBP += f * hp
+                self.filterLP += f * self.filterBP
+                sample = Float(self.filterLP)
+
+                // Drums
+                let timeInc = 1.0 / sr
+                for d in 0..<DrumSound.count {
+                    guard drums[d].active else { continue }
+                    let t = drums[d].time
+
+                    var ds: Float = 0.0
+                    switch d {
+                    case 0: // kick
+                        let freq = 150.0 * exp(-t * 8.0) + 40.0
+                        ds = Float(sin(drums[d].phase * 2.0 * .pi) * exp(-t * 4.0)) * curVolume * 0.5
+                        drums[d].phase += freq / sr
+                        if t > 0.5 { drums[d].active = false }
+                    case 1: // snare
+                        let tone = sin(drums[d].phase * 2.0 * .pi * 200.0)
+                        let noise = Double.random(in: -1...1)
+                        ds = Float((tone * 0.3 + noise * 0.7) * exp(-t * 10.0)) * curVolume * 0.35
+                        drums[d].phase += 1.0 / sr
+                        if t > 0.3 { drums[d].active = false }
+                    case 2: // hihat
+                        let noise = Double.random(in: -1...1)
+                        ds = Float(noise * exp(-t * 30.0)) * curVolume * 0.2
+                        if t > 0.15 { drums[d].active = false }
+                    case 3: // open hat
+                        let noise = Double.random(in: -1...1)
+                        let ring = sin(drums[d].phase * 2.0 * .pi * 6000.0) * 0.3
+                        ds = Float((noise * 0.7 + ring) * exp(-t * 6.0)) * curVolume * 0.2
+                        drums[d].phase += 1.0 / sr
+                        if t > 0.6 { drums[d].active = false }
+                    case 4: // clap
+                        let noise = Double.random(in: -1...1)
+                        let mod = sin(t * 150.0) > 0 ? 1.0 : 0.6
+                        ds = Float(noise * exp(-t * 15.0) * mod) * curVolume * 0.3
+                        if t > 0.2 { drums[d].active = false }
+                    case 5: // tom hi
+                        let freq = 250.0 * exp(-t * 5.0) + 120.0
+                        ds = Float(sin(drums[d].phase * 2.0 * .pi) * exp(-t * 6.0)) * curVolume * 0.4
+                        drums[d].phase += freq / sr
+                        if t > 0.4 { drums[d].active = false }
+                    case 6: // tom lo
+                        let freq = 120.0 * exp(-t * 4.0) + 60.0
+                        ds = Float(sin(drums[d].phase * 2.0 * .pi) * exp(-t * 5.0)) * curVolume * 0.45
+                        drums[d].phase += freq / sr
+                        if t > 0.5 { drums[d].active = false }
+                    case 7: // shaker
+                        let noise = Double.random(in: -1...1)
+                        let mod = abs(sin(t * 80.0 * .pi))
+                        ds = Float(noise * mod * exp(-t * 12.0)) * curVolume * 0.15
+                        if t > 0.2 { drums[d].active = false }
+                    default:
+                        break
+                    }
+                    sample += ds
+                    drums[d].time += timeInc
                 }
-                self.noteLock.unlock()
 
-                // Apply filter to synth signal
-                sample = self.applyFilter(sample, sampleRate: sr)
+                // Delay
+                if curDelayMix > 0.001 {
+                    let delaySamples = Int(Double(curDelayTime) * sr)
+                    if delaySamples > 0 && delaySamples < self.delayBuffer.count {
+                        let readIdx = (self.delayWriteIndex - delaySamples + self.delayBuffer.count) % self.delayBuffer.count
+                        let delayed = self.delayBuffer[readIdx]
+                        let output = sample + delayed * curDelayMix
+                        self.delayBuffer[self.delayWriteIndex] = sample + delayed * curDelayFeedback
+                        self.delayWriteIndex = (self.delayWriteIndex + 1) % self.delayBuffer.count
+                        sample = output
+                    }
+                }
 
-                // Drum voices (unfiltered)
-                sample += self.processDrums(sampleRate: sr)
+                // Reverb
+                if curReverbMix > 0.001 {
+                    let decay = Float(0.3 + Double(curReverbDecay) * 0.65)
+                    var combSum: Float = 0.0
+                    for i in 0..<4 {
+                        let idx = self.reverbIndices[i]
+                        let delayed = self.reverbBuffers[i][idx]
+                        self.reverbBuffers[i][idx] = sample + delayed * decay
+                        self.reverbIndices[i] = (idx + 1) % self.reverbLengths[i]
+                        combSum += delayed
+                    }
+                    combSum *= 0.25
+                    var allpass = combSum
+                    for i in 4..<6 {
+                        let idx = self.reverbIndices[i]
+                        let delayed = self.reverbBuffers[i][idx]
+                        self.reverbBuffers[i][idx] = allpass + delayed * 0.5
+                        allpass = delayed - allpass * 0.5
+                        self.reverbIndices[i] = (idx + 1) % self.reverbLengths[i]
+                    }
+                    sample = sample * (1.0 - curReverbMix) + allpass * curReverbMix
+                }
 
-                // Apply delay
-                sample = self.applyDelay(sample, sampleRate: sr)
-
-                // Apply reverb
-                sample = self.applyReverb(sample)
-
-                // Clamp
                 sample = max(-1.0, min(1.0, sample))
 
                 for buffer in bufferList {
@@ -288,6 +404,12 @@ final class AudioEngine: ObservableObject {
                     buf[frame] = sample
                 }
             }
+
+            // Write back updated state
+            os_unfair_lock_lock(&self.lock)
+            self.noteSlots = notes
+            self.drumSlots = drums
+            os_unfair_lock_unlock(&self.lock)
 
             return noErr
         }
@@ -304,175 +426,39 @@ final class AudioEngine: ObservableObject {
         }
     }
 
-    // MARK: - Filter (State Variable Filter)
-
-    private func applyFilter(_ input: Float, sampleRate sr: Double) -> Float {
-        let cutoffHz = 80.0 * pow(225.0, Double(filterCutoff))
-        let f = 2.0 * sin(.pi * cutoffHz / sr)
-        let q = 1.0 - Double(filterResonance) * 0.95
-
-        let hp = Double(input) - filterLP - q * filterBP
-        filterBP += f * hp
-        filterLP += f * filterBP
-
-        return Float(filterLP)
-    }
-
-    // MARK: - Delay
-
-    private func applyDelay(_ input: Float, sampleRate sr: Double) -> Float {
-        guard delayMix > 0.001 else { return input }
-
-        let delaySamples = Int(Double(delayTime) * sr)
-        guard delaySamples > 0 && delaySamples < delayBuffer.count else { return input }
-
-        let readIndex = (delayWriteIndex - delaySamples + delayBuffer.count) % delayBuffer.count
-        let delayed = delayBuffer[readIndex]
-
-        let output = input + delayed * delayMix
-        delayBuffer[delayWriteIndex] = input + delayed * delayFeedback
-        delayWriteIndex = (delayWriteIndex + 1) % delayBuffer.count
-
-        return output
-    }
-
-    // MARK: - Reverb (Schroeder)
-
-    private func applyReverb(_ input: Float) -> Float {
-        guard reverbMix > 0.001 else { return input }
-
-        let decay = 0.3 + Double(reverbDecay) * 0.65
-
-        // 4 comb filters
-        var combSum: Float = 0.0
-        for i in 0..<4 {
-            let idx = reverbIndices[i]
-            let delayed = reverbBuffers[i][idx]
-            reverbBuffers[i][idx] = input + delayed * Float(decay)
-            reverbIndices[i] = (idx + 1) % reverbLengths[i]
-            combSum += delayed
-        }
-        combSum *= 0.25
-
-        // 2 allpass filters
-        var allpass = combSum
-        for i in 4..<6 {
-            let idx = reverbIndices[i]
-            let delayed = reverbBuffers[i][idx]
-            let newVal = allpass + delayed * 0.5
-            reverbBuffers[i][idx] = newVal
-            allpass = delayed - allpass * 0.5
-            reverbIndices[i] = (idx + 1) % reverbLengths[i]
-        }
-
-        return input * (1.0 - reverbMix) + allpass * reverbMix
-    }
-
     // MARK: - Note Control
 
     func noteOn(_ midiNote: Int) {
-        noteLock.lock()
-        activeNotes[midiNote] = NoteState()
-        noteLock.unlock()
+        os_unfair_lock_lock(&lock)
+        // Find a free slot or reuse one
+        var slotIdx = -1
+        for i in 0..<AudioEngine.maxNotes {
+            if !noteSlots[i].active {
+                slotIdx = i
+                break
+            }
+        }
+        if slotIdx == -1 { slotIdx = 0 } // steal oldest if full
+        noteSlots[slotIdx] = NoteSlot(active: true, midiNote: midiNote)
+        os_unfair_lock_unlock(&lock)
     }
 
     func noteOff(_ midiNote: Int) {
-        noteLock.lock()
-        if var state = activeNotes[midiNote] {
-            state.releasing = true
-            state.releaseStart = 0.0
-            activeNotes[midiNote] = state
+        os_unfair_lock_lock(&lock)
+        for i in 0..<AudioEngine.maxNotes {
+            if noteSlots[i].active && noteSlots[i].midiNote == midiNote && !noteSlots[i].releasing {
+                noteSlots[i].releasing = true
+                noteSlots[i].releaseStart = 0.0
+            }
         }
-        noteLock.unlock()
+        os_unfair_lock_unlock(&lock)
     }
 
     // MARK: - Drum Playback
 
     func playDrum(_ drum: DrumSound) {
-        noteLock.lock()
-        drumPhases[drum] = DrumState(phase: 0, time: 0, active: true)
-        noteLock.unlock()
-    }
-
-    private func processDrums(sampleRate sr: Double) -> Float {
-        var sample: Float = 0.0
-
-        noteLock.lock()
-        for (drum, var state) in drumPhases {
-            guard state.active else { continue }
-
-            let timeIncrement = 1.0 / sr
-
-            switch drum {
-            case .kick:
-                let freq = 150.0 * exp(-state.time * 8.0) + 40.0
-                let env = exp(-state.time * 4.0)
-                sample += Float(sin(state.phase * 2.0 * .pi) * env) * volume * 0.5
-                state.phase += freq / sr
-                if state.time > 0.5 { state.active = false }
-
-            case .snare:
-                let tone = sin(state.phase * 2.0 * .pi * 200.0)
-                let noise = Double.random(in: -1...1)
-                let env = exp(-state.time * 10.0)
-                sample += Float((tone * 0.3 + noise * 0.7) * env) * volume * 0.35
-                state.phase += 1.0 / sr
-                if state.time > 0.3 { state.active = false }
-
-            case .hihat:
-                let noise = Double.random(in: -1...1)
-                let env = exp(-state.time * 30.0)
-                sample += Float(noise * env) * volume * 0.2
-                if state.time > 0.15 { state.active = false }
-
-            case .openHat:
-                let noise = Double.random(in: -1...1)
-                let env = exp(-state.time * 6.0)
-                let ring = sin(state.phase * 2.0 * .pi * 6000.0) * 0.3
-                sample += Float((noise * 0.7 + ring) * env) * volume * 0.2
-                state.phase += 1.0 / sr
-                if state.time > 0.6 { state.active = false }
-
-            case .clap:
-                let noise = Double.random(in: -1...1)
-                let burstEnv = exp(-state.time * 15.0)
-                let modulation = sin(state.time * 150.0) > 0 ? 1.0 : 0.6
-                sample += Float(noise * burstEnv * modulation) * volume * 0.3
-                if state.time > 0.2 { state.active = false }
-
-            case .tomHi:
-                let freq = 250.0 * exp(-state.time * 5.0) + 120.0
-                let env = exp(-state.time * 6.0)
-                sample += Float(sin(state.phase * 2.0 * .pi) * env) * volume * 0.4
-                state.phase += freq / sr
-                if state.time > 0.4 { state.active = false }
-
-            case .tomLo:
-                let freq = 120.0 * exp(-state.time * 4.0) + 60.0
-                let env = exp(-state.time * 5.0)
-                sample += Float(sin(state.phase * 2.0 * .pi) * env) * volume * 0.45
-                state.phase += freq / sr
-                if state.time > 0.5 { state.active = false }
-
-            case .shaker:
-                let noise = Double.random(in: -1...1)
-                let mod = abs(sin(state.time * 80.0 * .pi))
-                let env = exp(-state.time * 12.0)
-                sample += Float(noise * mod * env) * volume * 0.15
-                if state.time > 0.2 { state.active = false }
-            }
-
-            state.time += timeIncrement
-            drumPhases[drum] = state
-        }
-        noteLock.unlock()
-
-        return sample
-    }
-
-    // MARK: - Helpers
-
-    private func midiNoteToFrequency(_ note: Int) -> Double {
-        440.0 * pow(2.0, Double(note - 69) / 12.0)
+        os_unfair_lock_lock(&lock)
+        drumSlots[drum.index] = DrumSlot(phase: 0, time: 0, active: true)
+        os_unfair_lock_unlock(&lock)
     }
 }
