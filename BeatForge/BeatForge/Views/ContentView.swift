@@ -40,7 +40,7 @@ struct ContentView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
-                    .padding(.bottom, 24)
+                    .padding(.bottom, 40)
                 }
 
                 // Keyboard always visible at bottom

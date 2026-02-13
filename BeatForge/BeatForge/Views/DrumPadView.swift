@@ -26,18 +26,8 @@ private struct DrumPadButton: View {
 
     @State private var isPressed = false
 
-    private var padGray: Color {
-        switch drum {
-        case .kick:    return Color(white: 0.18)
-        case .snare:   return Color(white: 0.22)
-        case .hihat:   return Color(white: 0.16)
-        case .openHat: return Color(white: 0.20)
-        case .clap:    return Color(white: 0.24)
-        case .tomHi:   return Color(white: 0.19)
-        case .tomLo:   return Color(white: 0.15)
-        case .shaker:  return Color(white: 0.21)
-        }
-    }
+    private let padDefault = Color(white: 0.28)
+    private let padPressed = Color(white: 0.10)
 
     private var padIcon: String {
         switch drum {
@@ -70,7 +60,7 @@ private struct DrumPadButton: View {
             .frame(height: 58)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(isPressed ? Color(white: 0.35) : padGray)
+                    .fill(isPressed ? padPressed : padDefault)
                     .shadow(color: .black.opacity(0.4), radius: isPressed ? 1 : 4, y: isPressed ? 0 : 2)
             )
             .overlay(
