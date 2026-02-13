@@ -1,5 +1,6 @@
 import AVFoundation
 import Foundation
+import UIKit
 
 /// Core audio engine handling synthesis and drum playback
 final class AudioEngine: ObservableObject {
@@ -51,9 +52,10 @@ final class AudioEngine: ObservableObject {
 
     // MARK: - Audio Properties
 
-    private let engine = AVAudioEngine()
+    private var engine = AVAudioEngine()
+    private var sourceNode: AVAudioSourceNode?
 
-    private var sampleRate: Double = 44100.0
+    private var sampleRate: Double = 48000.0
     private var activeNotes: [Int: NoteState] = [:]
     private let noteLock = NSLock()
 
@@ -101,12 +103,16 @@ final class AudioEngine: ObservableObject {
         generateWavetable()
         setupAudioSession()
         setupEngine()
+        setupNotifications()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     private func generateWavetable() {
         wavetable = (0..<wavetableSize).map { i in
             let phase = Double(i) / Double(wavetableSize)
-            // Digital wavetable: mix of harmonics with phase distortion
             let fundamental = sin(phase * 2.0 * .pi)
             let second = sin(phase * 4.0 * .pi) * 0.5
             let third = sin(phase * 6.0 * .pi) * 0.3
@@ -120,29 +126,87 @@ final class AudioEngine: ObservableObject {
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-            try session.setPreferredSampleRate(44100)
             try session.setPreferredIOBufferDuration(0.005)
             try session.setActive(true)
+            // Use the device's actual sample rate
+            sampleRate = session.sampleRate
+            if sampleRate <= 0 { sampleRate = 48000.0 }
         } catch {
             print("Audio session error: \(error)")
         }
     }
 
+    private func setupNotifications() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleInterruption),
+            name: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance()
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleRouteChange),
+            name: AVAudioSession.routeChangeNotification,
+            object: AVAudioSession.sharedInstance()
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAppDidBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+    }
+
+    @objc private func handleInterruption(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+
+        if type == .ended {
+            do {
+                try AVAudioSession.sharedInstance().setActive(true)
+                startEngineIfNeeded()
+            } catch {
+                print("Failed to reactivate audio session: \(error)")
+            }
+        }
+    }
+
+    @objc private func handleRouteChange(_ notification: Notification) {
+        startEngineIfNeeded()
+    }
+
+    @objc private func handleAppDidBecomeActive() {
+        do {
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            print("Failed to reactivate audio session: \(error)")
+        }
+        startEngineIfNeeded()
+    }
+
+    private func startEngineIfNeeded() {
+        guard !engine.isRunning else { return }
+        do {
+            try engine.start()
+        } catch {
+            print("Engine restart error: \(error)")
+        }
+    }
+
     private func setupEngine() {
-        let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 2)!
-        sampleRate = format.sampleRate
+        let sr = sampleRate
+        let format = AVAudioFormat(standardFormatWithSampleRate: sr, channels: 2)!
 
         // Initialize delay buffer (max 1 second)
-        delayBuffer = [Float](repeating: 0.0, count: Int(sampleRate))
+        delayBuffer = [Float](repeating: 0.0, count: Int(sr))
         delayWriteIndex = 0
 
         // Initialize reverb buffers
         reverbBuffers = reverbLengths.map { [Float](repeating: 0.0, count: $0) }
         reverbIndices = [Int](repeating: 0, count: reverbLengths.count)
 
-        let sr = sampleRate
-
-        let sourceNode = AVAudioSourceNode { [weak self] _, _, frameCount, audioBufferList -> OSStatus in
+        let node = AVAudioSourceNode { [weak self] _, _, frameCount, audioBufferList -> OSStatus in
             guard let self = self else { return noErr }
 
             let bufferList = UnsafeMutableAudioBufferListPointer(audioBufferList)
@@ -228,11 +292,13 @@ final class AudioEngine: ObservableObject {
             return noErr
         }
 
-        engine.attach(sourceNode)
-        engine.connect(sourceNode, to: engine.mainMixerNode, format: format)
+        sourceNode = node
+        engine.attach(node)
+        engine.connect(node, to: engine.mainMixerNode, format: format)
 
         do {
             try engine.start()
+            print("Audio engine started at \(sr) Hz")
         } catch {
             print("Engine start error: \(error)")
         }
@@ -241,10 +307,9 @@ final class AudioEngine: ObservableObject {
     // MARK: - Filter (State Variable Filter)
 
     private func applyFilter(_ input: Float, sampleRate sr: Double) -> Float {
-        // Map cutoff 0..1 to frequency 80..18000 Hz (exponential)
         let cutoffHz = 80.0 * pow(225.0, Double(filterCutoff))
         let f = 2.0 * sin(.pi * cutoffHz / sr)
-        let q = 1.0 - Double(filterResonance) * 0.95 // Prevent self-oscillation
+        let q = 1.0 - Double(filterResonance) * 0.95
 
         let hp = Double(input) - filterLP - q * filterBP
         filterBP += f * hp
@@ -363,7 +428,6 @@ final class AudioEngine: ObservableObject {
             case .openHat:
                 let noise = Double.random(in: -1...1)
                 let env = exp(-state.time * 6.0)
-                // Metallic ring via high-freq sine
                 let ring = sin(state.phase * 2.0 * .pi * 6000.0) * 0.3
                 sample += Float((noise * 0.7 + ring) * env) * volume * 0.2
                 state.phase += 1.0 / sr
@@ -392,7 +456,6 @@ final class AudioEngine: ObservableObject {
 
             case .shaker:
                 let noise = Double.random(in: -1...1)
-                // Rapid amplitude modulation for shaker texture
                 let mod = abs(sin(state.time * 80.0 * .pi))
                 let env = exp(-state.time * 12.0)
                 sample += Float(noise * mod * env) * volume * 0.15
