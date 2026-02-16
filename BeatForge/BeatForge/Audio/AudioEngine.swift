@@ -98,6 +98,15 @@ final class AudioEngine: ObservableObject {
         var active: Bool = false
     }
 
+    // Command queue — main thread appends, audio thread drains
+    private enum AudioCommand {
+        case noteOn(Int)
+        case noteOff(Int)
+        case playDrum(Int)
+    }
+
+    private var pendingCommands: [AudioCommand] = []
+
     // MARK: - Filter State
 
     private var filterLP: Double = 0.0
@@ -244,13 +253,41 @@ final class AudioEngine: ObservableObject {
             let curDelayTime = self.delayTime
             let curDelayFeedback = self.delayFeedback
 
-            // Lock once, copy state, unlock
+            // Drain pending commands (lock held only for the swap)
             os_unfair_lock_lock(&self.lock)
-            var notes = self.noteSlots
-            var drums = self.drumSlots
+            let commands = self.pendingCommands
+            self.pendingCommands.removeAll()
             os_unfair_lock_unlock(&self.lock)
 
-            // Process all frames without holding the lock
+            // Apply commands — audio thread exclusively owns noteSlots/drumSlots
+            for cmd in commands {
+                switch cmd {
+                case .noteOn(let midiNote):
+                    var slotIdx = 0
+                    for i in 0..<AudioEngine.maxNotes {
+                        if !self.noteSlots[i].active {
+                            slotIdx = i
+                            break
+                        }
+                    }
+                    self.noteSlots[slotIdx] = NoteSlot(active: true, midiNote: midiNote)
+                case .noteOff(let midiNote):
+                    for i in 0..<AudioEngine.maxNotes {
+                        if self.noteSlots[i].active && self.noteSlots[i].midiNote == midiNote && !self.noteSlots[i].releasing {
+                            self.noteSlots[i].releasing = true
+                            self.noteSlots[i].releaseStart = 0.0
+                        }
+                    }
+                case .playDrum(let index):
+                    self.drumSlots[index] = DrumSlot(phase: 0, time: 0, active: true)
+                }
+            }
+
+            // Local copies for processing
+            var notes = self.noteSlots
+            var drums = self.drumSlots
+
+            // Process all frames
             for frame in 0..<frames {
                 var sample: Float = 0.0
 
@@ -405,11 +442,9 @@ final class AudioEngine: ObservableObject {
                 }
             }
 
-            // Write back updated state
-            os_unfair_lock_lock(&self.lock)
+            // Write back — audio thread exclusively owns this state, no lock needed
             self.noteSlots = notes
             self.drumSlots = drums
-            os_unfair_lock_unlock(&self.lock)
 
             return noErr
         }
@@ -430,27 +465,13 @@ final class AudioEngine: ObservableObject {
 
     func noteOn(_ midiNote: Int) {
         os_unfair_lock_lock(&lock)
-        // Find a free slot or reuse one
-        var slotIdx = -1
-        for i in 0..<AudioEngine.maxNotes {
-            if !noteSlots[i].active {
-                slotIdx = i
-                break
-            }
-        }
-        if slotIdx == -1 { slotIdx = 0 } // steal oldest if full
-        noteSlots[slotIdx] = NoteSlot(active: true, midiNote: midiNote)
+        pendingCommands.append(.noteOn(midiNote))
         os_unfair_lock_unlock(&lock)
     }
 
     func noteOff(_ midiNote: Int) {
         os_unfair_lock_lock(&lock)
-        for i in 0..<AudioEngine.maxNotes {
-            if noteSlots[i].active && noteSlots[i].midiNote == midiNote && !noteSlots[i].releasing {
-                noteSlots[i].releasing = true
-                noteSlots[i].releaseStart = 0.0
-            }
-        }
+        pendingCommands.append(.noteOff(midiNote))
         os_unfair_lock_unlock(&lock)
     }
 
@@ -458,7 +479,7 @@ final class AudioEngine: ObservableObject {
 
     func playDrum(_ drum: DrumSound) {
         os_unfair_lock_lock(&lock)
-        drumSlots[drum.index] = DrumSlot(phase: 0, time: 0, active: true)
+        pendingCommands.append(.playDrum(drum.index))
         os_unfair_lock_unlock(&lock)
     }
 }
