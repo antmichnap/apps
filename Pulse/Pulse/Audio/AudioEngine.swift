@@ -333,13 +333,20 @@ final class AudioEngine: ObservableObject {
                     if notes[i].phase >= 1.0 { notes[i].phase -= 1.0 }
                 }
 
-                // Filter
-                let cutoffHz = 80.0 * pow(225.0, Double(curFilterCutoff))
-                let f = 2.0 * sin(.pi * cutoffHz / sr)
-                let q = 1.0 - Double(curFilterResonance) * 0.95
+                // Filter (SVF with stability clamp)
+                let cutoffHz = 20.0 + Double(curFilterCutoff) * (sr * 0.4 - 20.0)
+                let f = min(2.0 * sin(.pi * cutoffHz / sr), 0.85)
+                let q = 1.0 - Double(curFilterResonance) * 0.9
                 let hp = Double(sample) - self.filterLP - q * self.filterBP
                 self.filterBP += f * hp
                 self.filterLP += f * self.filterBP
+
+                // Guard against NaN blowup
+                if self.filterLP.isNaN || self.filterBP.isNaN {
+                    self.filterLP = 0
+                    self.filterBP = 0
+                }
+
                 sample = Float(self.filterLP)
 
                 // Drums
