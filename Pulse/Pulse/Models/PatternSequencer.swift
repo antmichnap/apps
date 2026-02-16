@@ -45,6 +45,7 @@ final class PatternSequencer: ObservableObject {
     @Published var steps: [Step] = Array(repeating: Step(), count: 16)
     @Published var currentStep: Int = -1
     @Published var isPlaying: Bool = false
+    @Published var isRecording: Bool = false
     @Published var bpm: Double = 120
 
     // MARK: - Callbacks
@@ -149,6 +150,7 @@ final class PatternSequencer: ObservableObject {
 
     func stop() {
         isPlaying = false
+        isRecording = false
         timer?.invalidate()
         timer = nil
         if let last = lastNote {
@@ -156,6 +158,22 @@ final class PatternSequencer: ObservableObject {
             lastNote = nil
         }
         currentStep = -1
+    }
+
+    func toggleRecording() {
+        if isRecording {
+            isRecording = false
+        } else {
+            isRecording = true
+            if !isPlaying {
+                play()
+            }
+        }
+    }
+
+    func recordNote(_ midiNote: Int) {
+        guard isRecording && isPlaying && currentStep >= 0 && currentStep < steps.count else { return }
+        steps[currentStep].note = midiNote
     }
 
     private func scheduleNextStep() {

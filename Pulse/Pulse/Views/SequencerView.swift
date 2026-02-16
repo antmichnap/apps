@@ -40,6 +40,20 @@ struct SequencerView: View {
             }
             .buttonStyle(.plain)
 
+            Button {
+                sequencer.toggleRecording()
+            } label: {
+                Image(systemName: "record.circle")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(sequencer.isRecording ? .red : .white)
+                    .frame(width: 44, height: 36)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(sequencer.isRecording ? Color.red.opacity(0.25) : Color(white: 0.3))
+                    )
+            }
+            .buttonStyle(.plain)
+
             Spacer()
 
             Menu {

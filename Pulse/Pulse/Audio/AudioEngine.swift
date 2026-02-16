@@ -54,7 +54,7 @@ final class AudioEngine: ObservableObject {
     @Published var release: Float = 0.3
 
     // Filter
-    @Published var filterCutoff: Float = 1.0
+    @Published var filterCutoff: Float = 0.5
     @Published var filterResonance: Float = 0.0
 
     // Reverb
@@ -252,6 +252,8 @@ final class AudioEngine: ObservableObject {
             let curDelayMix = self.delayMix
             let curDelayTime = self.delayTime
             let curDelayFeedback = self.delayFeedback
+            let wt = self.wavetable
+            let wtSize = self.wavetableSize
 
             // Drain pending commands (lock held only for the swap)
             os_unfair_lock_lock(&self.lock)
@@ -309,11 +311,11 @@ final class AudioEngine: ObservableObject {
                     case .square:
                         wave = notes[i].phase < 0.5 ? 1.0 : -1.0
                     case .wavetable:
-                        let pos = notes[i].phase * Double(self.wavetableSize)
-                        let idx = Int(pos) % self.wavetableSize
+                        let pos = notes[i].phase * Double(wtSize)
+                        let idx = Int(pos) % wtSize
                         let frac = pos - floor(pos)
-                        let next = (idx + 1) % self.wavetableSize
-                        wave = self.wavetable[idx] * (1.0 - frac) + self.wavetable[next] * frac
+                        let next = (idx + 1) % wtSize
+                        wave = wt[idx] * (1.0 - frac) + wt[next] * frac
                     }
 
                     if notes[i].releasing {

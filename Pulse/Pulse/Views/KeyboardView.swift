@@ -15,8 +15,8 @@ struct KeyboardView: View {
 
     private let whiteKeyWidth: CGFloat = 38
     private let blackKeyWidth: CGFloat = 24
-    private let whiteKeyHeight: CGFloat = 140
-    private let blackKeyHeight: CGFloat = 85
+    private let whiteKeyHeight: CGFloat = 110
+    private let blackKeyHeight: CGFloat = 65
 
     @State private var pressedNotes: Set<Int> = []
 

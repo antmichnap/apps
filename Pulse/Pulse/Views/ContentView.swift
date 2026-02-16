@@ -40,7 +40,7 @@ struct ContentView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
-                    .padding(.bottom, 40)
+                    .padding(.bottom, 80)
                 }
 
                 // Keyboard always visible at bottom
@@ -50,7 +50,12 @@ struct ContentView: View {
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         KeyboardView(
-                            onNoteOn: { audioEngine.noteOn($0) },
+                            onNoteOn: { note in
+                                audioEngine.noteOn(note)
+                                if sequencer.isRecording {
+                                    sequencer.recordNote(note)
+                                }
+                            },
                             onNoteOff: { audioEngine.noteOff($0) }
                         )
                     }
@@ -157,28 +162,38 @@ struct ContentView: View {
     // MARK: - Play View
 
     private var playView: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             // Drum pads
             sectionHeader("Drum Pads", icon: "square.grid.2x2.fill")
             DrumPadView { drum in
                 audioEngine.playDrum(drum)
             }
 
-            // Synth controls
-            sectionHeader("Synth", icon: "slider.horizontal.3")
-            synthControls
+            // Synth + Filter combined
+            sectionHeader("Synth & Filter", icon: "slider.horizontal.3")
+            VStack(spacing: 10) {
+                controlSlider(label: "Volume", value: $audioEngine.volume, range: 0...1)
+                controlSlider(label: "Attack", value: $audioEngine.attack, range: 0.001...0.5)
+                controlSlider(label: "Release", value: $audioEngine.release, range: 0.05...2.0)
+                Divider().background(Color.white.opacity(0.08))
+                controlSlider(label: "Cutoff", value: $audioEngine.filterCutoff, range: 0...0.99)
+                controlSlider(label: "Reso", value: $audioEngine.filterResonance, range: 0...1)
+            }
+            .padding(14)
+            .background(controlCard)
 
-            // Filter controls
-            sectionHeader("Filter", icon: "line.3.horizontal.decrease")
-            filterControls
-
-            // Reverb controls
-            sectionHeader("Reverb", icon: "dot.radiowaves.right")
-            reverbControls
-
-            // Delay controls
-            sectionHeader("Delay", icon: "repeat")
-            delayControls
+            // Reverb + Delay combined
+            sectionHeader("Effects", icon: "dot.radiowaves.right")
+            VStack(spacing: 10) {
+                controlSlider(label: "Reverb", value: $audioEngine.reverbMix, range: 0...1)
+                controlSlider(label: "Decay", value: $audioEngine.reverbDecay, range: 0...1)
+                Divider().background(Color.white.opacity(0.08))
+                controlSlider(label: "Delay", value: $audioEngine.delayMix, range: 0...1)
+                controlSlider(label: "Time", value: $audioEngine.delayTime, range: 0.05...1.0)
+                controlSlider(label: "Feedbk", value: $audioEngine.delayFeedback, range: 0...0.9)
+            }
+            .padding(14)
+            .background(controlCard)
         }
     }
 
@@ -189,52 +204,6 @@ struct ContentView: View {
             sectionHeader("Step Sequencer", icon: "waveform.badge.plus")
             SequencerView(sequencer: sequencer)
         }
-    }
-
-    // MARK: - Synth Controls
-
-    private var synthControls: some View {
-        VStack(spacing: 12) {
-            controlSlider(label: "Volume", value: $audioEngine.volume, range: 0...1)
-            controlSlider(label: "Attack", value: $audioEngine.attack, range: 0.001...0.5)
-            controlSlider(label: "Release", value: $audioEngine.release, range: 0.05...2.0)
-        }
-        .padding(14)
-        .background(controlCard)
-    }
-
-    // MARK: - Filter Controls
-
-    private var filterControls: some View {
-        VStack(spacing: 12) {
-            controlSlider(label: "Cutoff", value: $audioEngine.filterCutoff, range: 0...1)
-            controlSlider(label: "Reso", value: $audioEngine.filterResonance, range: 0...1)
-        }
-        .padding(14)
-        .background(controlCard)
-    }
-
-    // MARK: - Reverb Controls
-
-    private var reverbControls: some View {
-        VStack(spacing: 12) {
-            controlSlider(label: "Mix", value: $audioEngine.reverbMix, range: 0...1)
-            controlSlider(label: "Decay", value: $audioEngine.reverbDecay, range: 0...1)
-        }
-        .padding(14)
-        .background(controlCard)
-    }
-
-    // MARK: - Delay Controls
-
-    private var delayControls: some View {
-        VStack(spacing: 12) {
-            controlSlider(label: "Mix", value: $audioEngine.delayMix, range: 0...1)
-            controlSlider(label: "Time", value: $audioEngine.delayTime, range: 0.05...1.0)
-            controlSlider(label: "Feedback", value: $audioEngine.delayFeedback, range: 0...0.9)
-        }
-        .padding(14)
-        .background(controlCard)
     }
 
     // MARK: - Shared UI
