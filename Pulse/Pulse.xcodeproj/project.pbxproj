@@ -7,34 +7,34 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AA000001 /* SynthBoxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001 /* SynthBoxApp.swift */; };
-		AA000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000002 /* ContentView.swift */; };
-		AA000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000003 /* Assets.xcassets */; };
-		AA000004 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000005 /* Preview Assets.xcassets */; };
-		AA000005 /* AudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000006 /* AudioEngine.swift */; };
-		AA000006 /* KeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000007 /* KeyboardView.swift */; };
-		AA000007 /* DrumPadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000008 /* DrumPadView.swift */; };
-		AA000008 /* PatternSequencer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000009 /* PatternSequencer.swift */; };
-		AA000009 /* SequencerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000A /* SequencerView.swift */; };
-		AA00000A /* Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000B /* Helpers.swift */; };
+		CA000001 /* PulseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB000001 /* PulseApp.swift */; };
+		CA000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB000002 /* ContentView.swift */; };
+		CA000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CB000003 /* Assets.xcassets */; };
+		CA000004 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CB000005 /* Preview Assets.xcassets */; };
+		CA000005 /* AudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB000006 /* AudioEngine.swift */; };
+		CA000006 /* KeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB000007 /* KeyboardView.swift */; };
+		CA000007 /* DrumPadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB000008 /* DrumPadView.swift */; };
+		CA000008 /* PatternSequencer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB000009 /* PatternSequencer.swift */; };
+		CA000009 /* SequencerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB00000A /* SequencerView.swift */; };
+		CA00000A /* Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB00000B /* Helpers.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		AC000001 /* SynthBox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SynthBox.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		AB000001 /* SynthBoxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SynthBoxApp.swift; sourceTree = "<group>"; };
-		AB000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		AB000003 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		AB000005 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		AB000006 /* AudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEngine.swift; sourceTree = "<group>"; };
-		AB000007 /* KeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardView.swift; sourceTree = "<group>"; };
-		AB000008 /* DrumPadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrumPadView.swift; sourceTree = "<group>"; };
-		AB000009 /* PatternSequencer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatternSequencer.swift; sourceTree = "<group>"; };
-		AB00000A /* SequencerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SequencerView.swift; sourceTree = "<group>"; };
-		AB00000B /* Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Helpers.swift; sourceTree = "<group>"; };
+		CC000001 /* Pulse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pulse.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CB000001 /* PulseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseApp.swift; sourceTree = "<group>"; };
+		CB000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		CB000003 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		CB000005 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		CB000006 /* AudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEngine.swift; sourceTree = "<group>"; };
+		CB000007 /* KeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardView.swift; sourceTree = "<group>"; };
+		CB000008 /* DrumPadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrumPadView.swift; sourceTree = "<group>"; };
+		CB000009 /* PatternSequencer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatternSequencer.swift; sourceTree = "<group>"; };
+		CB00000A /* SequencerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SequencerView.swift; sourceTree = "<group>"; };
+		CB00000B /* Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Helpers.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		AD000001 /* Frameworks */ = {
+		CD000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -44,67 +44,67 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		AE000001 = {
+		CE000001 = {
 			isa = PBXGroup;
 			children = (
-				AE000002 /* SynthBox */,
-				AE000006 /* Products */,
+				CE000002 /* Pulse */,
+				CE000006 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		AE000002 /* SynthBox */ = {
+		CE000002 /* Pulse */ = {
 			isa = PBXGroup;
 			children = (
-				AB000001 /* SynthBoxApp.swift */,
-				AB00000B /* Helpers.swift */,
-				AE000003 /* Audio */,
-				AE000004 /* Views */,
-				AE000005 /* Models */,
-				AB000003 /* Assets.xcassets */,
-				AE000007 /* Preview Content */,
+				CB000001 /* PulseApp.swift */,
+				CB00000B /* Helpers.swift */,
+				CE000003 /* Audio */,
+				CE000004 /* Views */,
+				CE000005 /* Models */,
+				CB000003 /* Assets.xcassets */,
+				CE000007 /* Preview Content */,
 			);
-			path = SynthBox;
+			path = Pulse;
 			sourceTree = "<group>";
 		};
-		AE000003 /* Audio */ = {
+		CE000003 /* Audio */ = {
 			isa = PBXGroup;
 			children = (
-				AB000006 /* AudioEngine.swift */,
+				CB000006 /* AudioEngine.swift */,
 			);
 			path = Audio;
 			sourceTree = "<group>";
 		};
-		AE000004 /* Views */ = {
+		CE000004 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				AB000002 /* ContentView.swift */,
-				AB000007 /* KeyboardView.swift */,
-				AB000008 /* DrumPadView.swift */,
-				AB00000A /* SequencerView.swift */,
+				CB000002 /* ContentView.swift */,
+				CB000007 /* KeyboardView.swift */,
+				CB000008 /* DrumPadView.swift */,
+				CB00000A /* SequencerView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
 		};
-		AE000005 /* Models */ = {
+		CE000005 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				AB000009 /* PatternSequencer.swift */,
+				CB000009 /* PatternSequencer.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
 		};
-		AE000006 /* Products */ = {
+		CE000006 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				AC000001 /* SynthBox.app */,
+				CC000001 /* Pulse.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		AE000007 /* Preview Content */ = {
+		CE000007 /* Preview Content */ = {
 			isa = PBXGroup;
 			children = (
-				AB000005 /* Preview Assets.xcassets */,
+				CB000005 /* Preview Assets.xcassets */,
 			);
 			path = "Preview Content";
 			sourceTree = "<group>";
@@ -112,39 +112,39 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		AF000001 /* SynthBox */ = {
+		CF000001 /* Pulse */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = B1000001 /* Build configuration list for PBXNativeTarget "SynthBox" */;
+			buildConfigurationList = D1000001 /* Build configuration list for PBXNativeTarget "Pulse" */;
 			buildPhases = (
-				AF000002 /* Sources */,
-				AD000001 /* Frameworks */,
-				AF000003 /* Resources */,
+				CF000002 /* Sources */,
+				CD000001 /* Frameworks */,
+				CF000003 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = SynthBox;
-			productName = SynthBox;
-			productReference = AC000001 /* SynthBox.app */;
+			name = Pulse;
+			productName = Pulse;
+			productReference = CC000001 /* Pulse.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		B0000001 /* Project object */ = {
+		D0000001 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1500;
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
-					AF000001 = {
+					CF000001 = {
 						CreatedOnToolsVersion = 15.0;
 					};
 				};
 			};
-			buildConfigurationList = B1000002 /* Build configuration list for PBXProject "SynthBox" */;
+			buildConfigurationList = D1000002 /* Build configuration list for PBXProject "Pulse" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -152,48 +152,48 @@
 				en,
 				Base,
 			);
-			mainGroup = AE000001;
-			productRefGroup = AE000006 /* Products */;
+			mainGroup = CE000001;
+			productRefGroup = CE000006 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				AF000001 /* SynthBox */,
+				CF000001 /* Pulse */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		AF000003 /* Resources */ = {
+		CF000003 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA000004 /* Preview Assets.xcassets in Resources */,
-				AA000003 /* Assets.xcassets in Resources */,
+				CA000004 /* Preview Assets.xcassets in Resources */,
+				CA000003 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		AF000002 /* Sources */ = {
+		CF000002 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA000002 /* ContentView.swift in Sources */,
-				AA000001 /* SynthBoxApp.swift in Sources */,
-				AA000005 /* AudioEngine.swift in Sources */,
-				AA000006 /* KeyboardView.swift in Sources */,
-				AA000007 /* DrumPadView.swift in Sources */,
-				AA000008 /* PatternSequencer.swift in Sources */,
-				AA000009 /* SequencerView.swift in Sources */,
-				AA00000A /* Helpers.swift in Sources */,
+				CA000002 /* ContentView.swift in Sources */,
+				CA000001 /* PulseApp.swift in Sources */,
+				CA000005 /* AudioEngine.swift in Sources */,
+				CA000006 /* KeyboardView.swift in Sources */,
+				CA000007 /* DrumPadView.swift in Sources */,
+				CA000008 /* PatternSequencer.swift in Sources */,
+				CA000009 /* SequencerView.swift in Sources */,
+				CA00000A /* Helpers.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		B2000001 /* Debug */ = {
+		D2000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -256,7 +256,7 @@
 			};
 			name = Debug;
 		};
-		B2000002 /* Release */ = {
+		D2000002 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -312,17 +312,17 @@
 			};
 			name = Release;
 		};
-		B2000003 /* Debug */ = {
+		D2000003 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"SynthBox/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"Pulse/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = SynthBox;
+				INFOPLIST_KEY_CFBundleDisplayName = Pulse;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -333,7 +333,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.synthbox.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pulse.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -343,17 +343,17 @@
 			};
 			name = Debug;
 		};
-		B2000004 /* Release */ = {
+		D2000004 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"SynthBox/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"Pulse/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = SynthBox;
+				INFOPLIST_KEY_CFBundleDisplayName = Pulse;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -364,7 +364,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.synthbox.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pulse.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -377,20 +377,20 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		B1000001 /* Build configuration list for PBXNativeTarget "SynthBox" */ = {
+		D1000001 /* Build configuration list for PBXNativeTarget "Pulse" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				B2000003 /* Debug */,
-				B2000004 /* Release */,
+				D2000003 /* Debug */,
+				D2000004 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		B1000002 /* Build configuration list for PBXProject "SynthBox" */ = {
+		D1000002 /* Build configuration list for PBXProject "Pulse" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				B2000001 /* Debug */,
-				B2000002 /* Release */,
+				D2000001 /* Debug */,
+				D2000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -398,5 +398,5 @@
 /* End XCConfigurationList section */
 
 	};
-	rootObject = B0000001 /* Project object */;
+	rootObject = D0000001 /* Project object */;
 }

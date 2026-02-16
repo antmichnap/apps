@@ -14,7 +14,7 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            // Background gradient: light gray to dark gray
+            // Background gradient
             LinearGradient(
                 colors: [Color(white: 0.28), Color(white: 0.15), Color(white: 0.08)],
                 startPoint: .topLeading,
@@ -70,7 +70,7 @@ struct ContentView: View {
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text("BeatForge")
+                Text("Pulse")
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                 Text("music maker")

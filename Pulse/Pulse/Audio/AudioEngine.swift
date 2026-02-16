@@ -73,10 +73,10 @@ final class AudioEngine: ObservableObject {
 
     private var sampleRate: Double = 48000.0
 
-    // Lock-free state shared with audio thread via os_unfair_lock
+    // Lock for command queue only
     private var lock = os_unfair_lock()
 
-    // Synth notes — fixed-size array avoids dictionary overhead on audio thread
+    // Synth notes — fixed-size array, owned exclusively by audio thread
     private static let maxNotes = 16
     private var noteSlots = [NoteSlot](repeating: NoteSlot(), count: AudioEngine.maxNotes)
 
@@ -89,7 +89,7 @@ final class AudioEngine: ObservableObject {
         var releaseStart: Double = 0.0
     }
 
-    // Drum state — fixed-size array indexed by DrumSound.index
+    // Drum state — fixed-size array, owned exclusively by audio thread
     private var drumSlots = [DrumSlot](repeating: DrumSlot(), count: DrumSound.count)
 
     private struct DrumSlot {

@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct BeatForgeApp: App {
+struct PulseApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
